@@ -1,0 +1,15 @@
+target
+node_modules
+
+# Added by cargo
+
+/target
+
+*.o
+.vscode/
+.DS_Store
+
+*.out
+*.tar.xz
+*.tar.gz
+depends/gmp/
