@@ -34,7 +34,7 @@ jobs:
             - name: Install Rust toolchain
               uses: actions-rs/toolchain@v1
               with:
-                  toolchain: "1.77"
+                  toolchain: stable
                   override: true
             - name: Run sccache-cache
               uses: mozilla-actions/sccache-action@v0.0.3
