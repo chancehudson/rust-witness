@@ -9,8 +9,7 @@ mod ffi {
     // }
 
     // Rust types and signatures exposed to C++.
-    extern "Rust" {
-    }
+    extern "Rust" {}
 
     // C++ types and signatures exposed to Rust.
     unsafe extern "C++" {
