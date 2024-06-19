@@ -58,3 +58,5 @@ jobs:
               run: cargo build
             - name: Generate witness
               run: cargo run
+            - name: Print witness
+              run: cat out.wtns

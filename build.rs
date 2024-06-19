@@ -1,7 +1,6 @@
 fn main() {
     cxx_build::bridge("src/main.rs")
-        .flag("-D_LONG_LONG_LIMB")
-        .include("/opt/homebrew/Cellar/nlohmann-json/3.11.3/include")
+        .include("depends/json/include")
         .include("depends/gmp/package/include")
         .object("circom/main.o")
         .object("circom/calcwit.o")
