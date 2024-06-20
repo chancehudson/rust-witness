@@ -6,7 +6,6 @@ on:
         types:
             - opened
             - reopened
-            - synchronize
             - ready_for_review
 
 env:
@@ -22,15 +21,11 @@ jobs:
             - uses: actions/checkout@v4
             - name: Check formatting
               run: cargo fmt --all -- --check
-            - name: Check template formating
-              run: cargo fmt --all -- --check
 
     build:
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4
-            - name: Submodules
-              run: git submodule init && git submodule update
             - name: Install Rust toolchain
               uses: actions-rs/toolchain@v1
               with:
@@ -38,25 +33,11 @@ jobs:
                   override: true
             - name: Run sccache-cache
               uses: mozilla-actions/sccache-action@v0.0.3
-            - name: Cache gmp
-              uses: actions/cache/restore@v4
-              with:
-                key: gmp
-                path: |
-                    depends/gmp-6.2.1.tar.xz
-            - name: Build gmp
-              run: ./build_gmp.sh host
-            - name: Cache gmp
-              uses: actions/cache/save@v4
-              with:
-                key: gmp
-                path: |
-                    depends/gmp-6.2.1.tar.xz
-            - name: Build witness CPP
-              run: cd circom && make
+            - name: Build w2c2
+              run: ./build_w2c2.sh
+            - name: Put test circuit in place
+              run: cp test-vectors/* circuits
             - name: Build rust
               run: cargo build
             - name: Generate witness
-              run: cargo run
-            - name: Print witness
-              run: cat out.wtns
+              run: cargo test

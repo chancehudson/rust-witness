@@ -13,3 +13,8 @@ node_modules
 *.tar.xz
 *.tar.gz
 depends/gmp/
+
+wabt/
+circuits/*
+!circuits/globals.c
+w2c2/
