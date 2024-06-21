@@ -2,6 +2,7 @@ use std::env;
 use std::path::Path;
 use std::process::Command;
 use std::{ffi::OsStr, fs};
+use walkdir::WalkDir;
 
 fn main() {
     Command::new("./build_w2c2.sh")
@@ -10,27 +11,28 @@ fn main() {
         .wait()
         .expect("w2c2 build errored");
     let env_var = env::var("CIRCOM_WASM_DIR");
-    let paths;
+    let wasm_dir;
     // If the environment variable is not defined _and_ we are building
     // for tests we should use the local test vectors directory.
     // If we're not building for tests we just skip the transpilation
     if env_var.is_ok() {
         // the env variable is defined, parse as needed
-        let wasm_dir = env_var.unwrap();
+        wasm_dir = env_var.unwrap();
         let wasm_dir_path = Path::new(&wasm_dir);
-        if !Path::is_absolute(wasm_dir_path) {
+        if !Path::is_absolute(&wasm_dir_path) {
             panic!("CIRCOM_WASM_DIR must be an absolute path");
         }
-        if !Path::is_dir(wasm_dir_path) {
+        if !Path::is_dir(&wasm_dir_path) {
             panic!("CIRCOM_WASM_DIR is not a directory");
         }
-        paths = fs::read_dir(wasm_dir).unwrap();
+        // paths = fs::read_dir(wasm_dir).unwrap();
     } else if env::var("PROFILE").unwrap() == "debug" {
         // the env var is not defined and we're building for debug
         // assume we're testing the rust-witness package itself
         // and build the test vectors
         println!("building from test-vectors");
-        paths = fs::read_dir("./test-vectors").unwrap();
+        wasm_dir = String::from("./test-vectors");
+        // paths = fs::read_dir("./test-vectors").unwrap();
     } else {
         // the env var is not defined and we're building for release
         // assume the package was included in another package but not used
@@ -51,8 +53,12 @@ fn main() {
         .flag("-Wno-unused-parameter")
         .flag("-Wno-c2x-extensions");
 
-    for entry in paths {
-        let path = entry.unwrap().path();
+    for entry in WalkDir::new(wasm_dir) {
+        let e = entry.unwrap();
+        let path = e.path();
+        if path.is_dir() {
+            continue;
+        }
         let ext = path.extension().and_then(OsStr::to_str).unwrap();
         // Iterate over all wasm files and generate c source, then compile each source to
         // a static library that can be called from rust
@@ -77,7 +83,7 @@ fn main() {
             .as_str(),
         );
         let out = Path::new(&circuit_out_dir)
-            .join(Path::new(path.clone().file_name().unwrap()))
+            .join(Path::new(path.file_name().unwrap()))
             .with_extension("c");
         if out.exists() {
             println!(
@@ -89,7 +95,7 @@ fn main() {
         Command::new("w2c2/build/w2c2/w2c2")
             .arg("-p")
             .arg("-m")
-            .arg(path.clone())
+            .arg(path)
             .arg(out.clone())
             .spawn()
             .expect("Failed to spawn w2c2")
