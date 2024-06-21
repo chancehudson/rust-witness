@@ -1,11 +1,6 @@
-use fnv::FnvHasher;
+use std::{collections::HashMap};
 use num_bigint::{BigInt, BigUint};
-use num_traits::{Signed, ToPrimitive, Zero};
-use std::hash::Hasher;
 use std::time::Instant;
-use std::{collections::HashMap, ffi::c_void};
-
-fn main() {}
 
 /// TODO: pass in Hashmap of bigints to build witness
 /// provide optional functions for passing raw bits
@@ -15,20 +10,55 @@ macro_rules! witness {
     ($x: ident) => {
         paste::item! {
             extern "C" {
-                pub fn [<$x Instantiate>](i: *mut c_void, resolveImports: *mut c_void);
-                pub fn [<$x FreeInstance>](i: *mut c_void);
-                pub fn [<$x _getFieldNumLen32>](i: *mut c_void) -> u32;
-                pub fn [<$x _getRawPrime>](i: *mut c_void);
-                pub fn [<$x _getWitnessSize>](i: *mut c_void) -> u32;
-                pub fn [<$x _readSharedRWMemory>](i: *mut c_void, l0: u32) -> u32;
-                pub fn [<$x _writeSharedRWMemory>](i: *mut c_void, l0: u32, l1: u32);
-                pub fn [<$x _setInputSignal>](i: *mut c_void, l0: u32, l1: u32, l2: u32);
-                pub fn [<$x _getWitness>](i: *mut c_void, l0: u32);
-                pub fn [<$x _init>](i: *mut c_void, l0: u32);
+                pub fn [<$x Instantiate>](i: *mut std::ffi::c_void, resolveImports: *mut std::ffi::c_void);
+                pub fn [<$x FreeInstance>](i: *mut std::ffi::c_void);
+                pub fn [<$x _getFieldNumLen32>](i: *mut std::ffi::c_void) -> u32;
+                pub fn [<$x _getRawPrime>](i: *mut std::ffi::c_void);
+                pub fn [<$x _getWitnessSize>](i: *mut std::ffi::c_void) -> u32;
+                pub fn [<$x _readSharedRWMemory>](i: *mut std::ffi::c_void, l0: u32) -> u32;
+                pub fn [<$x _writeSharedRWMemory>](i: *mut std::ffi::c_void, l0: u32, l1: u32);
+                pub fn [<$x _setInputSignal>](i: *mut std::ffi::c_void, l0: u32, l1: u32, l2: u32);
+                pub fn [<$x _getWitness>](i: *mut std::ffi::c_void, l0: u32);
+                pub fn [<$x _init>](i: *mut std::ffi::c_void, l0: u32);
             }
         }
         paste::item! {
-            pub fn [<$x _witness>]<I: IntoIterator<Item = (String, Vec<BigInt>)>>(inputs: I) -> Vec<BigInt> {
+            pub fn [<$x _witness>]<I: IntoIterator<Item = (String, Vec<num_bigint::BigInt>)>>(inputs: I) -> Vec<num_bigint::BigInt> {
+                use std::hash::Hasher;
+                use num_bigint::{BigInt, BigUint};
+                use num_traits::{Signed, ToPrimitive, Zero};
+                use fnv::FnvHasher;
+                // used for keying the values to signals
+                fn fnv(inp: &str) -> (u32, u32) {
+                    let mut hasher = FnvHasher::default();
+                    hasher.write(inp.as_bytes());
+                    let h = hasher.finish();
+
+                    ((h >> 32) as u32, h as u32)
+                }
+
+                fn from_array32(arr: Vec<u32>) -> BigInt {
+                    let mut res = BigInt::zero();
+                    let radix = BigInt::from(0x100000000u64);
+                    for &val in arr.iter() {
+                        res = res * &radix + BigInt::from(val);
+                    }
+                    res
+                }
+
+                fn to_array32(s: &BigInt, size: usize) -> Vec<u32> {
+                    let mut res = vec![0; size];
+                    let mut rem = s.clone();
+                    let radix = BigInt::from(0x100000000u64);
+                    let mut c = size;
+                    while !rem.is_zero() {
+                        c -= 1;
+                        res[c] = (&rem % &radix).to_u32().unwrap();
+                        rem /= &radix;
+                    }
+
+                    res
+                }
                 unsafe {
                     let instance = init();
                     let resolver = resolver();
@@ -108,15 +138,6 @@ macro_rules! witness {
     };
 }
 
-// used for keying the values to signals
-pub(crate) fn fnv(inp: &str) -> (u32, u32) {
-    let mut hasher = FnvHasher::default();
-    hasher.write(inp.as_bytes());
-    let h = hasher.finish();
-
-    ((h >> 32) as u32, h as u32)
-}
-
 pub fn bytes_to_bits(bytes: &[u8]) -> Vec<bool> {
     let mut bits = Vec::new();
     for &byte in bytes {
@@ -128,34 +149,12 @@ pub fn bytes_to_bits(bytes: &[u8]) -> Vec<bool> {
     bits
 }
 
-fn from_array32(arr: Vec<u32>) -> BigInt {
-    let mut res = BigInt::zero();
-    let radix = BigInt::from(0x100000000u64);
-    for &val in arr.iter() {
-        res = res * &radix + BigInt::from(val);
-    }
-    res
-}
-
-fn to_array32(s: &BigInt, size: usize) -> Vec<u32> {
-    let mut res = vec![0; size];
-    let mut rem = s.clone();
-    let radix = BigInt::from(0x100000000u64);
-    let mut c = size;
-    while !rem.is_zero() {
-        c -= 1;
-        res[c] = (&rem % &radix).to_u32().unwrap();
-        rem /= &radix;
-    }
-
-    res
-}
 
 // shared global functions
 extern "C" {
-    pub fn init() -> *mut c_void;
-    pub fn resolver() -> *mut c_void;
-    pub fn cleanup(instance: *mut c_void);
+    pub fn init() -> *mut std::ffi::c_void;
+    pub fn resolver() -> *mut std::ffi::c_void;
+    pub fn cleanup(instance: *mut std::ffi::c_void);
 }
 
 #[cfg(test)]
