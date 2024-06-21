@@ -2,7 +2,13 @@ use fnv::FnvHasher;
 use num_bigint::{BigInt, BigUint};
 use num_traits::{Signed, ToPrimitive, Zero};
 use std::hash::Hasher;
+use std::time::Instant;
 use std::{collections::HashMap, ffi::c_void};
+
+fn main() {}
+
+/// TODO: pass in Hashmap of bigints to build witness
+/// provide optional functions for passing raw bits
 
 #[macro_export]
 macro_rules! witness {
@@ -22,8 +28,7 @@ macro_rules! witness {
             }
         }
         paste::item! {
-
-            pub fn [<$x _witness>]<I: IntoIterator<Item = (String, Vec<BigInt>)>>(inputs: I) -> Vec<BigUint> {
+            pub fn [<$x _witness>]<I: IntoIterator<Item = (String, Vec<BigInt>)>>(inputs: I) -> Vec<BigInt> {
                 unsafe {
                     let instance = init();
                     let resolver = resolver();
@@ -80,18 +85,23 @@ macro_rules! witness {
                     [<$x FreeInstance>](instance);
                     cleanup(instance);
 
-                    // convert it to field elements
-                    w.into_iter()
-                        .map(|w| {
-                            let w = if w.sign() == num_bigint::Sign::Minus {
-                                // Need to negate the witness element if negative
-                                prime.to_biguint().unwrap() - w.abs().to_biguint().unwrap()
-                            } else {
-                                w.to_biguint().unwrap()
-                            };
-                            w
-                        })
-                        .collect::<Vec<_>>()
+                    w
+
+                    // If the witness program produces negative values or values above the prime we should
+                    // bring the values into range like below
+
+                    // // convert it to field elements
+                    // w.into_iter()
+                    //     .map(|w| {
+                    //         let w = if w.sign() == num_bigint::Sign::Minus {
+                    //             // Need to negate the witness element if negative
+                    //             prime.to_biguint().unwrap() - w.abs().to_biguint().unwrap()
+                    //         } else {
+                    //             w.to_biguint().unwrap()
+                    //         };
+                    //         w
+                    //     })
+                    //     .collect::<Vec<_>>()
                 }
             }
         }
@@ -117,8 +127,6 @@ pub fn bytes_to_bits(bytes: &[u8]) -> Vec<bool> {
     }
     bits
 }
-
-fn main() {}
 
 fn from_array32(arr: Vec<u32>) -> BigInt {
     let mut res = BigInt::zero();
@@ -170,11 +178,11 @@ fn build_keccak_witness() {
     let mut inputs = HashMap::new();
     inputs.insert("in".to_string(), big_int_bits);
 
-    // let out = keccak256256test::build_witness(inputs);
-    use std::time::Instant;
     let now = Instant::now();
 
-    keccak256256test_witness(inputs);
+    let out = keccak256256test_witness(inputs);
+
+    // TODO: verify the output
 
     let elapsed = now.elapsed();
     println!("Elapsed: {:.2?}", elapsed);
@@ -183,28 +191,23 @@ fn build_keccak_witness() {
 #[test]
 fn build_multiplier2_witness() {
     let mut inputs = HashMap::new();
-    {
-        let bits = bytes_to_bits(&vec![10][..]);
-        let big_int_bits = bits
-            .into_iter()
-            .map(|bit| BigInt::from(bit as u8))
-            .collect();
-        inputs.insert("a".to_string(), big_int_bits);
-    }
-    {
-        let bits = bytes_to_bits(&vec![20][..]);
-        let big_int_bits = bits
-            .into_iter()
-            .map(|bit| BigInt::from(bit as u8))
-            .collect();
-        inputs.insert("b".to_string(), big_int_bits);
-    }
+    inputs.insert("a".to_string(), vec![BigInt::from(3)]);
+    inputs.insert("b".to_string(), vec![BigInt::from(11)]);
 
-    use std::time::Instant;
     let now = Instant::now();
 
-    multiplier2_witness(inputs);
-
+    let out = multiplier2_witness(inputs);
     let elapsed = now.elapsed();
     println!("Elapsed: {:.2?}", elapsed);
+
+    // For the multiplier2 circuit we input a = 3 and b = 11 and expect
+    // the following witness data
+    // 1, 33, 3, 11
+    // The first witness entry is always 1. After this there are 3 values
+    // defined in the circuit: the two inputs and one output and no intermediates
+
+    assert_eq!(out[0], BigInt::from(1));
+    assert_eq!(out[1], BigInt::from(33));
+    assert_eq!(out[2], BigInt::from(3));
+    assert_eq!(out[3], BigInt::from(11));
 }
