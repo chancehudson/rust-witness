@@ -4,6 +4,11 @@ use std::process::Command;
 use std::{ffi::OsStr, fs};
 
 fn main() {
+    Command::new("./build_w2c2.sh")
+        .spawn()
+        .expect("Failed to spawn w2c2 build")
+        .wait()
+        .expect("w2c2 build errored");
     let env_var = env::var("CIRCOM_WASM_DIR");
     let paths;
     // If the environment variable is not defined _and_ we are building

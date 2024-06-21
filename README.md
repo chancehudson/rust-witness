@@ -7,8 +7,6 @@ A crate to natively generate circom witnesses in Rust. This crate transpiles the
 Clone the repo then run the following commands in the repo directory:
 
 ```sh
-./build_w2c2.sh
-cp test-vectors/* circuits/
 cargo test
 ```
 
