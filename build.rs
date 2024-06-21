@@ -1,10 +1,39 @@
+use std::env;
 use std::path::Path;
 use std::process::Command;
 use std::{ffi::OsStr, fs};
 
 fn main() {
-    let circuit_dir = "./circuits";
-    let paths = fs::read_dir(circuit_dir).unwrap();
+    let env_var = env::var("CIRCOM_WASM_DIR");
+    let paths;
+    // If the environment variable is not defined _and_ we are building
+    // for tests we should use the local test vectors directory.
+    // If we're not building for tests we just skip the transpilation
+    if env_var.is_ok() {
+        // the env variable is defined, parse as needed
+        let wasm_dir = env_var.unwrap();
+        let wasm_dir_path = Path::new(&wasm_dir);
+        if !Path::is_absolute(wasm_dir_path) {
+            panic!("CIRCOM_WASM_DIR must be an absolute path");
+        }
+        if !Path::is_dir(wasm_dir_path) {
+            panic!("CIRCOM_WASM_DIR is not a directory");
+        }
+        paths = fs::read_dir(wasm_dir).unwrap();
+    } else if env::var("PROFILE").unwrap() == "debug" {
+        // the env var is not defined and we're building for debug
+        // assume we're testing the rust-witness package itself
+        // and build the test vectors
+        println!("building from test-vectors");
+        paths = fs::read_dir("./test-vectors").unwrap();
+    } else {
+        // the env var is not defined and we're building for release
+        // assume the package was included in another package but not used
+        // and do nothing
+        println!("CIRCOM_WASM_DIR is not defined, skipping witness build.");
+        return;
+    }
+    let circuit_out_dir = "./circuits";
     let mut builder = cc::Build::new();
     // empty the handlers file
     let mut handler = "".to_string();
@@ -42,14 +71,13 @@ fn main() {
             )
             .as_str(),
         );
-        let out = path
-            .clone()
-            .with_file_name(path.clone().file_name().unwrap())
+        let out = Path::new(&circuit_out_dir)
+            .join(Path::new(path.clone().file_name().unwrap()))
             .with_extension("c");
         if out.exists() {
             println!(
                 "Source file already exists, overwriting: {}",
-                out.clone().display()
+                &out.display()
             );
         }
         // first generate the c source
@@ -75,7 +103,7 @@ fn main() {
     }
 
     // write filename prefixed handler functions
-    let handlers = Path::new(circuit_dir.clone()).join("handlers.c");
+    let handlers = Path::new(circuit_out_dir).join("handlers.c");
     fs::write(handlers, handler).expect("Error writing handler source");
 
     builder.compile("circuit");
