@@ -1,5 +1,5 @@
 use std::env;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::{ffi::OsStr, fs};
 use walkdir::WalkDir;
@@ -15,23 +15,54 @@ use walkdir::WalkDir;
 const W2C2_BUILD_SCRIPT: &str = include_str!("../build_w2c2.sh");
 const GLOBALS_C: &str = include_str!("./globals.c");
 
-pub fn transpile_wasm(wasmdir: String) {
+// Get a function to spawn w2c2, either from $PATH or by building locally
+fn w2c2_cmd() -> (fn() -> Command, PathBuf) {
+    let w2c2_path = Path::new(env::var("OUT_DIR").unwrap().as_str()).join(Path::new("w2c2"));
     let w2c2_script_path =
         Path::new(env::var("OUT_DIR").unwrap().as_str()).join(Path::new("build_w2c2.sh"));
     fs::write(&w2c2_script_path, W2C2_BUILD_SCRIPT).expect("Failed to write build script");
-    Command::new("sh")
-        .arg(w2c2_script_path.to_str().unwrap())
-        .spawn()
-        .expect("Failed to spawn w2c2 build")
-        .wait()
-        .expect("w2c2 build errored");
+    match Command::new("w2c2").spawn() {
+        Ok(_) => {
+            // clone the repo to get the headers
+            Command::new("sh")
+                .arg(w2c2_script_path.to_str().unwrap())
+                .arg("1")
+                .spawn()
+                .expect("Failed to spawn w2c2 build")
+                .wait()
+                .expect("w2c2 build errored");
+            // Run the binary in the PATH
+            (|| Command::new("w2c2"), w2c2_path)
+        }
+        Err(_e) => {
+            // Build the w2c2 binary
+            Command::new("sh")
+                .arg(w2c2_script_path.to_str().unwrap())
+                .spawn()
+                .expect("Failed to spawn w2c2 build")
+                .wait()
+                .expect("w2c2 build errored");
+            (
+                || {
+                    let w2c2_path =
+                        Path::new(env::var("OUT_DIR").unwrap().as_str()).join(Path::new("w2c2"));
+                    let w2c2_exec_path = w2c2_path.join(Path::new("build/w2c2/w2c2"));
+                    Command::new(w2c2_exec_path.to_str().unwrap())
+                },
+                w2c2_path,
+            )
+        }
+    }
+}
+
+pub fn transpile_wasm(wasmdir: String) {
     let globals_c_path = Path::new(&env::var("OUT_DIR").unwrap()).join(Path::new("globals.c"));
     fs::write(&globals_c_path, GLOBALS_C).expect("Failed to write globals.c");
-    let w2c2_path = Path::new(env::var("OUT_DIR").unwrap().as_str()).join(Path::new("w2c2"));
-    let w2c2_exec_path = w2c2_path.join(Path::new("build/w2c2/w2c2"));
     if !Path::is_dir(Path::new(wasmdir.as_str())) {
         panic!("wasmdir must be a directory");
     }
+
+    let (w2c2, w2c2_path) = w2c2_cmd();
 
     let circuit_out_dir = env::var("OUT_DIR").unwrap();
     let mut builder = cc::Build::new();
@@ -96,7 +127,7 @@ pub fn transpile_wasm(wasmdir: String) {
             );
         }
         // first generate the c source
-        Command::new(w2c2_exec_path.to_str().unwrap())
+        w2c2()
             .arg("-p")
             .arg("-m")
             .arg(path)

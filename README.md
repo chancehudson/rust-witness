@@ -49,3 +49,13 @@ Clone the repo then run the following commands in the repo directory:
 ```sh
 cargo test
 ```
+
+## Speeding up builds
+
+By default this package will build `w2c2` from source if the binary is not in your `$PATH`. This can be slow when developing and rebuilding frequently. To install `w2c2` to your cargo bin run the following:
+
+```sh
+sh ./install_w2c2.sh
+```
+
+`transpile_wasm` will automatically use the `w2c2` in your `$PATH` if possible.
