@@ -4,5 +4,5 @@
 include!("./src/transpile.rs");
 
 fn main() {
-    transpile_wasm(String::from("./test-vectors"));
+    transpile_wasm(String::from("./tests"));
 }
