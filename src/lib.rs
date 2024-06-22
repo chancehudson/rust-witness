@@ -1,7 +1,9 @@
+use fnv::FnvHasher;
 use num_bigint::BigInt;
 use num_traits::{Signed, ToPrimitive, Zero};
-use fnv::FnvHasher;
 use std::hash::Hasher;
+
+pub mod transpile;
 
 #[macro_export]
 macro_rules! witness {
@@ -102,7 +104,6 @@ macro_rules! witness {
     };
 }
 
-
 // shared global functions
 extern "C" {
     pub fn witness_c_init() -> *mut std::ffi::c_void;
@@ -121,7 +122,9 @@ pub fn c_resolver() -> *mut std::ffi::c_void {
 }
 
 pub fn c_cleanup(v: *mut std::ffi::c_void) {
-    unsafe { witness_c_cleanup(v); }
+    unsafe {
+        witness_c_cleanup(v);
+    }
 }
 
 pub fn fnv(inp: &str) -> (u32, u32) {

@@ -1,7 +1,7 @@
+use num_bigint::BigInt;
 use rust_witness::witness;
 use std::collections::HashMap;
 use std::time::Instant;
-use num_bigint::BigInt;
 
 fn bytes_to_bits(bytes: &[u8]) -> Vec<bool> {
     let mut bits = Vec::new();

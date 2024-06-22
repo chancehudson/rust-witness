@@ -2,7 +2,12 @@
 
 set -e
 
-BUILD_DIR=./w2c2
+# OUT_DIR is specified by the rust build environment
+if [ -z $OUT_DIR ]; then
+    echo "OUT_DIR not specified"
+    exit 1
+fi
+BUILD_DIR=$OUT_DIR/w2c2
 BINARY_PATH=$BUILD_DIR/build/w2c2/w2c2
 
 if [ -e $BINARY_PATH ]; then
