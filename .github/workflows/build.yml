@@ -33,10 +33,6 @@ jobs:
                   override: true
             - name: Run sccache-cache
               uses: mozilla-actions/sccache-action@v0.0.3
-            - name: Build w2c2
-              run: ./build_w2c2.sh
-            - name: Put test circuit in place
-              run: cp test-vectors/* circuits
             - name: Build rust
               run: cargo build
             - name: Generate witness

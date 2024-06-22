@@ -23,17 +23,17 @@ typedef struct instance { wasmModuleInstance common;
     wasmTable t0;
 } instance;
 
-instance* init() {
+instance* witness_c_init() {
     instance* i = malloc(sizeof(struct instance));
     return i;
 }
 
 typedef void* (_resolver)(const char*, const char*);
 
-_resolver* resolver() {
+_resolver* witness_c_resolver() {
     return NULL;
 }
 
-void cleanup(instance * i) {
+void witness_c_cleanup(instance * i) {
     free(i);
 }

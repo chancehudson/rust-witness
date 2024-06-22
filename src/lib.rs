@@ -1,9 +1,7 @@
-use std::{collections::HashMap};
-use num_bigint::{BigInt, BigUint};
-use std::time::Instant;
-
-/// TODO: pass in Hashmap of bigints to build witness
-/// provide optional functions for passing raw bits
+use num_bigint::BigInt;
+use num_traits::{Signed, ToPrimitive, Zero};
+use fnv::FnvHasher;
+use std::hash::Hasher;
 
 #[macro_export]
 macro_rules! witness {
@@ -24,44 +22,10 @@ macro_rules! witness {
         }
         paste::item! {
             pub fn [<$x _witness>]<I: IntoIterator<Item = (String, Vec<num_bigint::BigInt>)>>(inputs: I) -> Vec<num_bigint::BigInt> {
-                use std::hash::Hasher;
-                use num_bigint::{BigInt, BigUint};
-                use num_traits::{Signed, ToPrimitive, Zero};
-                use fnv::FnvHasher;
                 // used for keying the values to signals
-                fn fnv(inp: &str) -> (u32, u32) {
-                    let mut hasher = FnvHasher::default();
-                    hasher.write(inp.as_bytes());
-                    let h = hasher.finish();
-
-                    ((h >> 32) as u32, h as u32)
-                }
-
-                fn from_array32(arr: Vec<u32>) -> BigInt {
-                    let mut res = BigInt::zero();
-                    let radix = BigInt::from(0x100000000u64);
-                    for &val in arr.iter() {
-                        res = res * &radix + BigInt::from(val);
-                    }
-                    res
-                }
-
-                fn to_array32(s: &BigInt, size: usize) -> Vec<u32> {
-                    let mut res = vec![0; size];
-                    let mut rem = s.clone();
-                    let radix = BigInt::from(0x100000000u64);
-                    let mut c = size;
-                    while !rem.is_zero() {
-                        c -= 1;
-                        res[c] = (&rem % &radix).to_u32().unwrap();
-                        rem /= &radix;
-                    }
-
-                    res
-                }
                 unsafe {
-                    let instance = init();
-                    let resolver = resolver();
+                    let instance = rust_witness::c_init();
+                    let resolver = rust_witness::c_resolver();
                     // instantiate the memory structures
 
                     [<$x Instantiate>](instance, resolver);
@@ -75,7 +39,7 @@ macro_rules! witness {
                         let res = [<$x _readSharedRWMemory>](instance, x);
                         arr[(n32 as usize) - (x as usize) - 1] = res;
                     }
-                    let prime = from_array32(arr);
+                    // let prime = from_array32(arr);
                     // let n64 = ((prime.bits() - 1) / 64 + 1) as u32;
 
                     // prepare for building the witness
@@ -83,10 +47,10 @@ macro_rules! witness {
 
                     // allocate the inputs
                     for (name, values) in inputs.into_iter() {
-                        let (msb, lsb) = fnv(&name);
+                        let (msb, lsb) = rust_witness::fnv(&name);
 
                         for (i, value) in values.into_iter().enumerate() {
-                            let f_arr = to_array32(&value, n32 as usize);
+                            let f_arr = rust_witness::to_array32(&value, n32 as usize);
                             for j in 0..n32 {
                                 [<$x _writeSharedRWMemory>](
                                     instance,
@@ -108,12 +72,12 @@ macro_rules! witness {
                             arr[(n32 as usize) - 1 - (j as usize)] =
                                 [<$x _readSharedRWMemory>](instance, j);
                         }
-                        w.push(from_array32(arr));
+                        w.push(rust_witness::from_array32(arr));
                     }
 
                     // cleanup the c memory
                     [<$x FreeInstance>](instance);
-                    cleanup(instance);
+                    rust_witness::c_cleanup(instance);
 
                     w
 
@@ -138,75 +102,55 @@ macro_rules! witness {
     };
 }
 
-pub fn bytes_to_bits(bytes: &[u8]) -> Vec<bool> {
-    let mut bits = Vec::new();
-    for &byte in bytes {
-        for j in 0..8 {
-            let bit = (byte >> j) & 1;
-            bits.push(bit == 1);
-        }
-    }
-    bits
-}
-
 
 // shared global functions
 extern "C" {
-    pub fn init() -> *mut std::ffi::c_void;
-    pub fn resolver() -> *mut std::ffi::c_void;
-    pub fn cleanup(instance: *mut std::ffi::c_void);
+    pub fn witness_c_init() -> *mut std::ffi::c_void;
+    pub fn witness_c_resolver() -> *mut std::ffi::c_void;
+    pub fn witness_c_cleanup(instance: *mut std::ffi::c_void);
 }
 
-#[cfg(test)]
-witness!(keccak256256test);
-#[cfg(test)]
-witness!(multiplier2);
-
-#[test]
-fn build_keccak_witness() {
-    let input_vec = vec![
-        116, 101, 115, 116, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0,
-    ];
-
-    let bits = bytes_to_bits(&input_vec);
-    let big_int_bits = bits
-        .into_iter()
-        .map(|bit| BigInt::from(bit as u8))
-        .collect();
-    let mut inputs = HashMap::new();
-    inputs.insert("in".to_string(), big_int_bits);
-
-    let now = Instant::now();
-
-    let out = keccak256256test_witness(inputs);
-
-    // TODO: verify the output
-
-    let elapsed = now.elapsed();
-    println!("Elapsed: {:.2?}", elapsed);
+// Public functions to make the above functions accessible
+// in the crate namespace
+pub fn c_init() -> *mut std::ffi::c_void {
+    unsafe { witness_c_init() }
 }
 
-#[test]
-fn build_multiplier2_witness() {
-    let mut inputs = HashMap::new();
-    inputs.insert("a".to_string(), vec![BigInt::from(3)]);
-    inputs.insert("b".to_string(), vec![BigInt::from(11)]);
+pub fn c_resolver() -> *mut std::ffi::c_void {
+    unsafe { witness_c_resolver() }
+}
 
-    let now = Instant::now();
+pub fn c_cleanup(v: *mut std::ffi::c_void) {
+    unsafe { witness_c_cleanup(v); }
+}
 
-    let out = multiplier2_witness(inputs);
-    let elapsed = now.elapsed();
-    println!("Elapsed: {:.2?}", elapsed);
+pub fn fnv(inp: &str) -> (u32, u32) {
+    let mut hasher = FnvHasher::default();
+    hasher.write(inp.as_bytes());
+    let h = hasher.finish();
 
-    // For the multiplier2 circuit we input a = 3 and b = 11 and expect
-    // the following witness data
-    // 1, 33, 3, 11
-    // The first witness entry is always 1. After this there are 3 values
-    // defined in the circuit: the two inputs and one output and no intermediates
+    ((h >> 32) as u32, h as u32)
+}
 
-    assert_eq!(out[0], BigInt::from(1));
-    assert_eq!(out[1], BigInt::from(33));
-    assert_eq!(out[2], BigInt::from(3));
-    assert_eq!(out[3], BigInt::from(11));
+pub fn from_array32(arr: Vec<u32>) -> BigInt {
+    let mut res = BigInt::zero();
+    let radix = BigInt::from(0x100000000u64);
+    for &val in arr.iter() {
+        res = res * &radix + BigInt::from(val);
+    }
+    res
+}
+
+pub fn to_array32(s: &BigInt, size: usize) -> Vec<u32> {
+    let mut res = vec![0; size];
+    let mut rem = s.clone();
+    let radix = BigInt::from(0x100000000u64);
+    let mut c = size;
+    while !rem.is_zero() {
+        c -= 1;
+        res[c] = (&rem % &radix).to_u32().unwrap();
+        rem /= &radix;
+    }
+
+    res
 }

@@ -51,6 +51,7 @@ fn main() {
         .flag("-Wno-unused-label")
         .flag("-Wno-unused-variable")
         .flag("-Wno-unused-parameter")
+        .flag("-Wnonull-character")
         .flag("-Wno-c2x-extensions");
 
     for entry in WalkDir::new(wasm_dir) {
