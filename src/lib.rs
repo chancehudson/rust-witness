@@ -1,6 +1,7 @@
 use fnv::FnvHasher;
 use num_bigint::BigInt;
 use num_traits::{Signed, ToPrimitive, Zero};
+pub use paste;
 use std::hash::Hasher;
 
 pub mod transpile;
@@ -8,7 +9,7 @@ pub mod transpile;
 #[macro_export]
 macro_rules! witness {
     ($x: ident) => {
-        paste::item! {
+        rust_witness::paste::item! {
             extern "C" {
                 pub fn [<$x Instantiate>](i: *mut std::ffi::c_void, resolveImports: *mut std::ffi::c_void);
                 pub fn [<$x FreeInstance>](i: *mut std::ffi::c_void);
@@ -22,7 +23,7 @@ macro_rules! witness {
                 pub fn [<$x _init>](i: *mut std::ffi::c_void, l0: u32);
             }
         }
-        paste::item! {
+        rust_witness::paste::item! {
             pub fn [<$x _witness>]<I: IntoIterator<Item = (String, Vec<num_bigint::BigInt>)>>(inputs: I) -> Vec<num_bigint::BigInt> {
                 // used for keying the values to signals
                 unsafe {
