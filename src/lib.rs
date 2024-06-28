@@ -1,6 +1,6 @@
 use fnv::FnvHasher;
 use num_bigint::BigInt;
-use num_traits::{Signed, ToPrimitive, Zero};
+use num_traits::{ToPrimitive, Zero};
 pub use paste;
 use std::hash::Hasher;
 

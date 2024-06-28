@@ -36,7 +36,7 @@ fn build_keccak_witness() {
 
     let now = Instant::now();
 
-    let out = keccak256256test_witness(inputs);
+    let _out = keccak256256test_witness(inputs);
 
     // TODO: verify the output
 
