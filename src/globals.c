@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include "w2c2_base.h"
 
 // stubbed implementations for compilation
@@ -10,7 +11,10 @@
 
 void runtime__exceptionHandler(void*) {}
 void runtime__printErrorMessage(void*) {}
-void trap(Trap) {}
+void trap(Trap trap) {
+    fprintf(stderr, "TRAP: %s\n", trapDescription(trap));
+    abort();
+}
 
 // for both
 
