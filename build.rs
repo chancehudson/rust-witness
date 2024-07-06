@@ -4,5 +4,7 @@
 include!("./src/transpile.rs");
 
 fn main() {
-    transpile_wasm(String::from("./tests"));
+    if cfg!(test) {
+        transpile_wasm(String::from("./tests"));
+    }
 }
