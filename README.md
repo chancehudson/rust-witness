@@ -44,7 +44,7 @@ fn build_proof() {
 
 ## Setup
 
-Clone the repo then run the following commands in the repo directory:
+Clone the repo then run the following command in the repo directory:
 
 ```sh
 cargo test
