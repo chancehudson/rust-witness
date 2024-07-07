@@ -5,11 +5,9 @@ include!("./src/transpile.rs");
 
 // We only want to link our test witness functions if we're compiling
 // for the tests in rust-witness. Cargo/rust doesn't seem to offer
-// a solution so we use a simple env variable in the test command
+// a solution so we use a simple env variable set using .cargo
 fn main() {
-    let link_test_witness =
-        std::env::var("RUST_WITNESS_LINK_TEST_WITNESS").unwrap_or("".to_string());
-    if link_test_witness != "" {
+    if let Ok(_) = std::env::var("RUST_WITNESS_LINK_TEST_WITNESS") {
         transpile_wasm(String::from("./tests"));
     }
 }
