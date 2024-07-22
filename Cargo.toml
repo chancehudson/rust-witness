@@ -2,6 +2,10 @@
 name = "rust-witness"
 version = "0.1.0"
 edition = "2021"
+description = "Build a circom witness in Rust"
+license = "Apache-2.0"
+homepage = "https://github.com/chancehudson/rust-witness"
+repository = "https://github.com/chancehudson/rust-witness.git"
 
 [dependencies]
 cc = "1.0"
