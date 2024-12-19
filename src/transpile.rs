@@ -191,7 +191,7 @@ pub fn transpile_wasm(wasmdir: String) {
         }
     }
 
-    // Detect if "libcircuit.c" is up to date and skip compilation in that case
+    // Detect if "libcircuit.a" is up to date and skip compilation in that case
     let libcircuit = Path::new(&circuit_out_dir).join("libcircuit.a");
     let mut libcircuit_modified_time = std::time::SystemTime::UNIX_EPOCH;
     if libcircuit.exists() {
