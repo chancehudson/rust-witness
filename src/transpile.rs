@@ -122,11 +122,13 @@ pub fn transpile_wasm(wasmdir: String) {
         // The output files are named s00..01.c, s00..02.c, s00..03.c, etc., and a main file named after the wasm file.
         // As there may be multiple wasm files, we need to transpile each wasm file into a separate directory to prevent
         // w2c2 from overwriting the s..x.c files.
-        fs::create_dir(Path::new(&circuit_out_dir).join(Path::new(circuit_name.to_str().unwrap())))
-            .expect("Failed to create circuit output directory");
 
         let circuit_out_dir =
             Path::new(&circuit_out_dir).join(Path::new(circuit_name.to_str().unwrap()));
+
+        if !circuit_out_dir.exists() {
+            fs::create_dir(&circuit_out_dir).expect("Failed to create circuit output directory");
+        }
 
         let out = Path::new(&circuit_out_dir)
             .join(Path::new(path.file_name().unwrap()))
