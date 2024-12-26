@@ -84,6 +84,7 @@ pub fn transpile_wasm(wasmdir: String) {
         .flag("-Wno-null-character")
         .flag("-Wno-c2x-extensions");
 
+    let mut last_modified_file = std::time::SystemTime::UNIX_EPOCH;
     for entry in WalkDir::new(wasmdir) {
         let e = entry.unwrap();
         let path = e.path();
@@ -96,7 +97,7 @@ pub fn transpile_wasm(wasmdir: String) {
         if ext != "wasm" {
             continue;
         }
-        // with make source files with the same name as the wasm binary file
+        // make source files with the same name as the wasm binary file
         let circuit_name = path.file_stem().unwrap();
         let circuit_name_compressed = circuit_name
             .to_str()
@@ -117,40 +118,115 @@ pub fn transpile_wasm(wasmdir: String) {
             )
             .as_str(),
         );
+        // w2c2 is using a fixed naming convention when splitting source by the number of functions ("-f n" flag).
+        // The output files are named s00..01.c, s00..02.c, s00..03.c, etc., and a main file named after the wasm file.
+        // As there may be multiple wasm files, we need to transpile each wasm file into a separate directory to prevent
+        // w2c2 from overwriting the s..x.c files.
+
+        let circuit_out_dir =
+            Path::new(&circuit_out_dir).join(Path::new(circuit_name.to_str().unwrap()));
+
+        if !circuit_out_dir.exists() {
+            fs::create_dir(&circuit_out_dir).expect("Failed to create circuit output directory");
+        }
+
         let out = Path::new(&circuit_out_dir)
             .join(Path::new(path.file_name().unwrap()))
             .with_extension("c");
-        if out.exists() {
+        // Check if the source file needs to be regenerated
+        if needs_regeneration(path, &out) {
+            // first generate the c source
+            w2c2()
+                .arg("-p")
+                .arg("-m")
+                .arg("-f 1")
+                .arg(path)
+                .arg(out.clone())
+                .spawn()
+                .expect("Failed to spawn w2c2")
+                .wait()
+                .expect("w2c2 command errored");
+
+            let contents = fs::read_to_string(out.clone()).unwrap();
+            // make the data constants static to prevent duplicate symbol errors
+            fs::write(
+                out.clone(),
+                contents.replace("const U8 d", "static const U8 d"),
+            )
+            .expect("Error modifying data symbols");
+        } else {
             println!(
-                "Source file already exists, overwriting: {}",
-                &out.display()
+                "C source files are up to date, skipping transpilation: {}",
+                path.display()
+            );
+            last_modified_file = std::cmp::max(
+                last_modified_file,
+                fs::metadata(&out)
+                    .expect("Failed to read metadata")
+                    .modified()
+                    .expect("Failed to read modified time"),
             );
         }
-        // first generate the c source
-        w2c2()
-            .arg("-p")
-            .arg("-m")
-            .arg(path)
-            .arg(out.clone())
-            .spawn()
-            .expect("Failed to spawn w2c2")
-            .wait()
-            .expect("w2c2 command errored");
-
-        let contents = fs::read_to_string(out.clone()).unwrap();
-        // make the data constants static to prevent duplicate symbol errors
-        fs::write(
-            out.clone(),
-            contents.replace("const U8 d", "static const U8 d"),
-        )
-        .expect("Error modifying data symbols");
 
         builder.file(out.clone());
+        // Add all the files to the builder that start with "s0..." and end with ".c" (the results of w2c2 `-f` flag)
+        for entry in WalkDir::new(circuit_out_dir.clone()) {
+            let e = entry.unwrap();
+            let path = e.path();
+            if path.is_dir() {
+                continue;
+            }
+            let ext = path.extension().and_then(OsStr::to_str).unwrap_or("");
+            if ext != "c" {
+                continue;
+            }
+            if path
+                .file_name()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .starts_with("s0")
+                && path.file_name().unwrap().to_str().unwrap().ends_with(".c")
+            {
+                builder.file(path);
+            }
+        }
     }
 
-    // write filename prefixed handler functions
-    let handlers = Path::new(circuit_out_dir.as_str()).join("handlers.c");
-    fs::write(handlers, handler).expect("Error writing handler source");
+    // Detect if "libcircuit.a" is up to date and skip compilation in that case
+    let libcircuit = Path::new(&circuit_out_dir).join("libcircuit.a");
+    let mut libcircuit_modified_time = std::time::SystemTime::UNIX_EPOCH;
+    if libcircuit.exists() {
+        libcircuit_modified_time = fs::metadata(&libcircuit)
+            .expect("Failed to read metadata")
+            .modified()
+            .expect("Failed to read modified time");
+    }
 
-    builder.compile("circuit");
+    if libcircuit_modified_time < last_modified_file || !libcircuit.exists() {
+        // write filename prefixed handler functions
+        let handlers = Path::new(circuit_out_dir.as_str()).join("handlers.c");
+        fs::write(handlers, handler).expect("Error writing handler source");
+
+        builder.compile("circuit");
+    } else {
+        println!("Compiled circuit is up to date, skipping build");
+    }
+}
+
+fn needs_regeneration(source: &Path, generated: &Path) -> bool {
+    if !generated.exists() {
+        return true;
+    }
+    let source_metadata = fs::metadata(source).expect("Failed to read source metadata");
+    let generated_metadata = fs::metadata(generated).expect("Failed to read generated metadata");
+
+    let source_modified = source_metadata
+        .modified()
+        .expect("Failed to read source modification time");
+    let generated_modified = generated_metadata
+        .modified()
+        .expect("Failed to read generated modification time");
+
+    source_modified > generated_modified
 }
