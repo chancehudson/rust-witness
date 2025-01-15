@@ -193,25 +193,10 @@ pub fn transpile_wasm(wasmdir: String) {
         }
     }
 
-    // Detect if "libcircuit.a" is up to date and skip compilation in that case
-    let libcircuit = Path::new(&circuit_out_dir).join("libcircuit.a");
-    let mut libcircuit_modified_time = std::time::SystemTime::UNIX_EPOCH;
-    if libcircuit.exists() {
-        libcircuit_modified_time = fs::metadata(&libcircuit)
-            .expect("Failed to read metadata")
-            .modified()
-            .expect("Failed to read modified time");
-    }
+    let handlers = Path::new(circuit_out_dir.as_str()).join("handlers.c");
+    fs::write(handlers, handler).expect("Error writing handler source");
 
-    if libcircuit_modified_time < last_modified_file || !libcircuit.exists() {
-        // write filename prefixed handler functions
-        let handlers = Path::new(circuit_out_dir.as_str()).join("handlers.c");
-        fs::write(handlers, handler).expect("Error writing handler source");
-
-        builder.compile("circuit");
-    } else {
-        println!("Compiled circuit is up to date, skipping build");
-    }
+    builder.compile("circuit");
 }
 
 fn needs_regeneration(source: &Path, generated: &Path) -> bool {
