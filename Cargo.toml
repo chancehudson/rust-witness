@@ -1,6 +1,6 @@
 [package]
 name = "rust-witness"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 description = "Build a circom witness in Rust"
 license = "Apache-2.0"
