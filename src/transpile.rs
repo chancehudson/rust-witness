@@ -61,7 +61,8 @@ pub fn transpile_wasm(wasmdir: String) {
     if !Path::is_dir(Path::new(wasmdir.as_str())) {
         panic!("wasmdir must be a directory");
     }
-
+    println!("cargo:rerun-if-changed={}", wasmdir);
+    
     let (w2c2, w2c2_path) = w2c2_cmd();
 
     let circuit_out_dir = env::var("OUT_DIR").unwrap();
