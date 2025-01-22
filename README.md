@@ -59,3 +59,16 @@ sh ./install_w2c2.sh
 ```
 
 `transpile_wasm` will automatically use the `w2c2` in your `$PATH` if possible.
+
+## Toolchain Requirements
+
+Using `rust-witness` in another crate requires Rust 1.81.0 to be installed in the environment. The toolchain can be installed with the following command:
+
+```sh
+rustup install 1.81.0
+```
+
+Without the correct toolchain, errors similar to the following may occur:
+```sh 
+error: linking with `cc` failed: exit status: 1
+```
