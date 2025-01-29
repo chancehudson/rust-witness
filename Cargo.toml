@@ -8,7 +8,7 @@ homepage = "https://github.com/chancehudson/rust-witness"
 repository = "https://github.com/chancehudson/rust-witness.git"
 
 [dependencies]
-cc = {version ="1.2.3", features = ["parallel"]}
+cc = { version = "1.2.10", features = ["parallel"] }
 fnv = "1.0.7"
 num-bigint = "0.4.0"
 num-traits = "0.2.0"
@@ -16,7 +16,7 @@ paste = "1.0.0"
 walkdir = "2.5.0"
 
 [build-dependencies]
-cc = {version ="1.2.3", features = ["parallel"]}
+cc = { version = "1.2.10", features = ["parallel"] }
 walkdir = "2.5.0"
 
 [lib]
