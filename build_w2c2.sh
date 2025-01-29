@@ -16,7 +16,6 @@ fi
 
 rm -rf $BUILD_DIR
 git clone --recursive https://github.com/turbolent/w2c2 $BUILD_DIR
-rm -rf $BUILD_DIR/.git
 
 # if any argument is supplied just clone (to access the headers)
 if [ ! -z $1 ]; then
