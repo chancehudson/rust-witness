@@ -24,6 +24,7 @@ fi
 
 cd $BUILD_DIR
 
+
 cmake -B build
 cmake --build build
 
