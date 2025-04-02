@@ -15,7 +15,7 @@ if [ -e $BINARY_PATH ]; then
 fi
 
 rm -rf $BUILD_DIR
-git clone --recursive https://github.com/turbolent/w2c2 $BUILD_DIR
+git clone --recursive https://github.com/vivianjeng/w2c2 $BUILD_DIR
 
 # if any argument is supplied just clone (to access the headers)
 if [ ! -z $1 ]; then
