@@ -1,5 +1,5 @@
 use fnv::FnvHasher;
-use num_bigint::BigInt;
+pub use num_bigint::BigInt;
 use num_traits::{ToPrimitive, Zero};
 pub use paste;
 use std::hash::Hasher;
@@ -24,7 +24,7 @@ macro_rules! witness {
             }
         }
         rust_witness::paste::item! {
-            pub fn [<$x _witness>]<I: IntoIterator<Item = (String, Vec<num_bigint::BigInt>)>>(inputs: I) -> Vec<num_bigint::BigInt> {
+            pub fn [<$x _witness>]<I: IntoIterator<Item = (String, Vec<rust_witness::BigInt>)>>(inputs: I) -> Vec<rust_witness::BigInt> {
                 // used for keying the values to signals
                 unsafe {
                     let instance = rust_witness::c_init();
