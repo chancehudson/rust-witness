@@ -16,7 +16,7 @@ BUILD_DIR=$(mktemp)
 BINARY_PATH=$BUILD_DIR/build/w2c2/w2c2
 
 rm -rf $BUILD_DIR
-git clone --recursive https://github.com/vivianjeng/w2c2 $BUILD_DIR
+git clone --recursive https://github.com/turbolent/w2c2 $BUILD_DIR
 cd $BUILD_DIR
 
 cmake -B build
