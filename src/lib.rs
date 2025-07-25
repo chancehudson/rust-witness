@@ -106,10 +106,10 @@ macro_rules! witness {
 }
 
 // shared global functions
-extern "C" {
-    pub fn witness_c_init() -> *mut std::ffi::c_void;
-    pub fn witness_c_resolver() -> *mut std::ffi::c_void;
-    pub fn witness_c_cleanup(instance: *mut std::ffi::c_void);
+unsafe extern "C" {
+    pub unsafe fn witness_c_init() -> *mut std::ffi::c_void;
+    pub unsafe fn witness_c_resolver() -> *mut std::ffi::c_void;
+    pub unsafe fn witness_c_cleanup(instance: *mut std::ffi::c_void);
 }
 
 // Public functions to make the above functions accessible
