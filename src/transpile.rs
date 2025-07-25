@@ -198,6 +198,8 @@ pub fn transpile_wasm(wasmdir: String) {
     fs::write(handlers, handler).expect("Error writing handler source");
 
     builder.compile("circuit");
+    println!("cargo:rustc-link-lib=static=circuit");
+    println!("cargo:rustc-link-search=native={}", circuit_out_dir);
 }
 
 fn needs_regeneration(source: &Path, generated: &Path) -> bool {

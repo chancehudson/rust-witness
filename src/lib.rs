@@ -106,7 +106,6 @@ macro_rules! witness {
 }
 
 // shared global functions
-#[link(name = "circuit", kind = "static")]
 extern "C" {
     pub fn witness_c_init() -> *mut std::ffi::c_void;
     pub fn witness_c_resolver() -> *mut std::ffi::c_void;
