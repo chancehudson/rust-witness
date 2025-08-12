@@ -32,15 +32,15 @@ macro_rules! witness {
 
             // Public functions to make the above functions accessible
             // in the crate namespace
-            pub fn [<$x _c_init>]() -> *mut std::ffi::c_void {
+            pub unsafe fn [<$x _c_init>]() -> *mut std::ffi::c_void {
                 unsafe { [<$x _witness_c>]::witness_c_init() }
             }
 
-            pub fn [<$x _c_resolver>]() -> *mut std::ffi::c_void {
+            pub unsafe fn [<$x _c_resolver>]() -> *mut std::ffi::c_void {
                 unsafe { [<$x _witness_c>]::witness_c_resolver() }
             }
 
-            pub fn [<$x _c_cleanup>](v: *mut std::ffi::c_void) {
+            pub unsafe fn [<$x _c_cleanup>](v: *mut std::ffi::c_void) {
                 unsafe {
                     [<$x _witness_c>]::witness_c_cleanup(v);
                 }
