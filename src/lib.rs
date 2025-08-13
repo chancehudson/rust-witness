@@ -10,6 +10,13 @@ pub mod transpile;
 macro_rules! witness {
     ($x: ident) => {
         rust_witness::paste::item! {
+            mod [<$x _witness_c>] {
+                extern "C" {
+                    pub fn witness_c_init() -> *mut std::ffi::c_void;
+                    pub fn witness_c_resolver() -> *mut std::ffi::c_void;
+                    pub fn witness_c_cleanup(instance: *mut std::ffi::c_void);
+                }
+            }
             extern "C" {
                 pub fn [<$x Instantiate>](i: *mut std::ffi::c_void, resolveImports: *mut std::ffi::c_void);
                 pub fn [<$x FreeInstance>](i: *mut std::ffi::c_void);
@@ -22,13 +29,29 @@ macro_rules! witness {
                 pub fn [<$x _getWitness>](i: *mut std::ffi::c_void, l0: u32);
                 pub fn [<$x _init>](i: *mut std::ffi::c_void, l0: u32);
             }
+
+            // Public functions to make the above functions accessible
+            // in the crate namespace
+            pub unsafe fn [<$x _c_init>]() -> *mut std::ffi::c_void {
+                unsafe { [<$x _witness_c>]::witness_c_init() }
+            }
+
+            pub unsafe fn [<$x _c_resolver>]() -> *mut std::ffi::c_void {
+                unsafe { [<$x _witness_c>]::witness_c_resolver() }
+            }
+
+            pub unsafe fn [<$x _c_cleanup>](v: *mut std::ffi::c_void) {
+                unsafe {
+                    [<$x _witness_c>]::witness_c_cleanup(v);
+                }
+            }
         }
         rust_witness::paste::item! {
             pub fn [<$x _witness>]<I: IntoIterator<Item = (String, Vec<rust_witness::BigInt>)>>(inputs: I) -> Vec<rust_witness::BigInt> {
                 // used for keying the values to signals
                 unsafe {
-                    let instance = rust_witness::c_init();
-                    let resolver = rust_witness::c_resolver();
+                    let instance = [<$x _c_init>]();
+                    let resolver = [<$x _c_resolver>]();
                     // instantiate the memory structures
 
                     [<$x Instantiate>](instance, resolver);
@@ -80,7 +103,7 @@ macro_rules! witness {
 
                     // cleanup the c memory
                     [<$x FreeInstance>](instance);
-                    rust_witness::c_cleanup(instance);
+                    [<$x _c_cleanup>](instance);
 
                     w
 
@@ -103,29 +126,6 @@ macro_rules! witness {
             }
         }
     };
-}
-
-// shared global functions
-extern "C" {
-    pub fn witness_c_init() -> *mut std::ffi::c_void;
-    pub fn witness_c_resolver() -> *mut std::ffi::c_void;
-    pub fn witness_c_cleanup(instance: *mut std::ffi::c_void);
-}
-
-// Public functions to make the above functions accessible
-// in the crate namespace
-pub fn c_init() -> *mut std::ffi::c_void {
-    unsafe { witness_c_init() }
-}
-
-pub fn c_resolver() -> *mut std::ffi::c_void {
-    unsafe { witness_c_resolver() }
-}
-
-pub fn c_cleanup(v: *mut std::ffi::c_void) {
-    unsafe {
-        witness_c_cleanup(v);
-    }
 }
 
 pub fn fnv(inp: &str) -> (u32, u32) {
